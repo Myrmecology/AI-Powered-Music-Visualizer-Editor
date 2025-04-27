@@ -121,3 +121,43 @@ Sync Lights: Send MIDI/DMX signals to actual lights.
 
 TikTok Export Mode: One-click vertical video export with effects.
 
+🛠️ 🔗 Master Tech Stack Install List
+
+🎨 UI & App Framework (C++)
+
+Tool | Description | Install Method
+Qt 6 (Qt Creator optional) | GUI framework with QML for animations | Download Qt
+CMake | Build system for C++ projects | brew install cmake / Windows installer
+Ninja (optional) | Faster build tool (used by CMake) | brew install ninja or manual install
+OpenGL (optional) | For advanced visual effects | Comes with system or via Qt
+PortAudio / RtAudio | Real-time audio capture | Via package manager or build from source
+
+🧠 AI & Audio Analysis (Python)
+
+Package | Use | Install
+Python 3.9+ | Needed for all AI/ML features | Download
+librosa | Beat detection, tempo, frequency | pip install librosa
+numpy | Required for audio and ML work | pip install numpy
+soundfile | Audio I/O for librosa | pip install soundfile
+scikit-learn | For lightweight ML models | pip install scikit-learn
+PyTorch or TensorFlow | For deep learning models | pip install torch or pip install tensorflow
+matplotlib (optional) | For debugging and audio plotting | pip install matplotlib
+
+🔗 C++ ↔ Python Integration
+
+Tool | Use | Install
+Pybind11 (Option 1) | Embed Python directly in C++ | pip install pybind11, or build from source
+ZeroMQ or Sockets (Option 2) | Communicate via local server | pip install pyzmq
+JSON for Modern C++ | For passing structured data between C++ and Python | GitHub (header-only lib)
+
+🧰 VS Code Extensions
+
+Extension | Purpose
+✅ C/C++ (Microsoft) | C++ IntelliSense, debugging
+✅ Python | Python linting, Jupyter support
+✅ CMake Tools | Build + configure C++ projects
+✅ Better C++ Syntax | Improved highlighting
+✅ Qt for VS Code (Optional) | Helps with .ui or QML file integration
+
+## I'M MAKING THIS README VERY THOROUGH ##
+
