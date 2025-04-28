@@ -71,23 +71,121 @@ protected:
 
 private slots:
     void animate() {
+        // Update beat intensity decay
+        beatIntensity *= 0.95f;
+        
+        // Check for new beat
+        float currentTime = animationTime.elapsed() / 1000.0f;
+        for (float beatTime : beatTimes) {
+            if (beatTime > lastBeatTime && beatTime <= currentTime) {
+                beatIntensity = 1.0f;
+                lastBeatTime = beatTime;
+            }
+        }
+        
         update(); // Triggers paintGL
     }
 
 private:
     QTimer *animationTimer;
+    QElapsedTimer animationTime;
+    std::vector<float> waveformData;
+    std::vector<float> realtimeWaveform;
+    std::vector<float> beatTimes;
+    float tempo;
+    float currentBeatTime;
+    float lastBeatTime;
+    float beatIntensity;
+    float currentRMS;
+    QVector3D moodColor;
     
     void drawWaveform() {
-        // Placeholder for waveform visualization
-        glBegin(GL_LINE_STRIP);
-        glColor3f(0.0f, 1.0f, 0.0f);
+        const std::vector<float>& data = realtimeWaveform.empty() ? waveformData : realtimeWaveform;
+        if (data.empty()) return;
         
-        for (float x = -1.0f; x <= 1.0f; x += 0.01f) {
-            float y = 0.5f * sin(x * 10.0f); // Simple sine wave for now
+        glLineWidth(2.0f);
+        glBegin(GL_LINE_STRIP);
+        glColor4f(0.0f, 1.0f, 0.5f, 0.8f);
+        
+        for (size_t i = 0; i < data.size(); ++i) {
+            float x = -1.0f + 2.0f * i / data.size();
+            float y = data[i] * 0.5f;
             glVertex2f(x, y);
         }
         
         glEnd();
+    }
+    
+    void drawBeatIndicator() {
+        if (beatIntensity > 0.1f) {
+            float radius = 0.1f * beatIntensity;
+            int segments = 32;
+            
+            glBegin(GL_TRIANGLE_FAN);
+            glColor4f(1.0f, 1.0f, 1.0f, beatIntensity);
+            glVertex2f(0.0f, 0.8f);
+            
+            for (int i = 0; i <= segments; ++i) {
+                float angle = i * 2.0f * M_PI / segments;
+                float x = radius * cos(angle);
+                float y = 0.8f + radius * sin(angle);
+                glVertex2f(x, y);
+            }
+            
+            glEnd();
+        }
+    }
+    
+    void drawFrequencyBars() {
+        // Simple frequency visualization
+        int numBars = 32;
+        float barWidth = 2.0f / numBars;
+        
+        for (int i = 0; i < numBars; ++i) {
+            float intensity = 0.5f + 0.5f * sin(i * 0.5f + animationTime.elapsed() * 0.002f);
+            intensity *= (1.0f + beatIntensity * 0.5f);
+            
+            float x = -1.0f + i * barWidth;
+            float height = intensity * 0.4f;
+            
+            glBegin(GL_QUADS);
+            glColor4f(moodColor.x(), moodColor.y(), moodColor.z(), 0.7f);
+            glVertex2f(x, -0.8f);
+            glVertex2f(x + barWidth * 0.8f, -0.8f);
+            glVertex2f(x + barWidth * 0.8f, -0.8f + height);
+            glVertex2f(x, -0.8f + height);
+            glEnd();
+        }
+    }
+    
+    void drawMoodParticles() {
+        // Mood-based particle system
+        int numParticles = 50;
+        float time = animationTime.elapsed() * 0.001f;
+        
+        glPointSize(3.0f);
+        glBegin(GL_POINTS);
+        
+        for (int i = 0; i < numParticles; ++i) {
+            float t = time + i * 0.1f;
+            float x = sin(t * 0.5f + i) * 0.8f;
+            float y = sin(t * 0.3f + i * 2.0f) * 0.8f;
+            float alpha = 0.5f + 0.5f * sin(t * 2.0f + i);
+            
+            glColor4f(moodColor.x(), moodColor.y(), moodColor.z(), alpha * 0.5f);
+            glVertex2f(x, y);
+        }
+        
+        glEnd();
+    }
+    
+    QVector3D getMoodColor(const std::string& mood) {
+        if (mood == "happy") return QVector3D(1.0f, 0.7f, 0.0f);
+        if (mood == "sad") return QVector3D(0.2f, 0.3f, 0.8f);
+        if (mood == "energetic") return QVector3D(1.0f, 0.0f, 0.3f);
+        if (mood == "calm") return QVector3D(0.3f, 0.8f, 0.5f);
+        if (mood == "angry") return QVector3D(0.9f, 0.1f, 0.1f);
+        return QVector3D(1.0f, 1.0f, 1.0f); // Default white
     }
 };
 
