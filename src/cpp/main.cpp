@@ -20,6 +20,29 @@ public:
         animationTimer = new QTimer(this);
         connect(animationTimer, &QTimer::timeout, this, &VisualizerWidget::animate);
         animationTimer->start(16); // ~60 FPS
+        
+        // Initialize default values
+        currentBeatTime = 0.0f;
+        lastBeatTime = 0.0f;
+        beatIntensity = 0.0f;
+        moodColor = QVector3D(1.0f, 1.0f, 1.0f); // Default white
+    }
+    
+    void setAnalysisData(const AnalysisResult& result) {
+        if (result.success) {
+            waveformData = result.waveform;
+            beatTimes = result.beat_times;
+            tempo = result.tempo;
+            
+            // Set mood color based on prediction
+            QVector3D newColor = getMoodColor(result.predicted_mood);
+            moodColor = newColor;
+        }
+    }
+    
+    void updateRealTimeData(const std::vector<float>& waveform, float rms) {
+        realtimeWaveform = waveform;
+        currentRMS = rms;
     }
 
 protected:
