@@ -49,13 +49,20 @@ protected:
     void initializeGL() override {
         // Initialize OpenGL functions
         glClearColor(0.1f, 0.1f, 0.2f, 1.0f);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
 
     void paintGL() override {
+        // Update background color based on mood
+        glClearColor(moodColor.x() * 0.2f, moodColor.y() * 0.2f, moodColor.z() * 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        // Basic visualization placeholder
+        // Draw visualizations
         drawWaveform();
+        drawBeatIndicator();
+        drawFrequencyBars();
+        drawMoodParticles();
     }
 
     void resizeGL(int w, int h) override {
