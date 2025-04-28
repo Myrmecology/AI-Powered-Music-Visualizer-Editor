@@ -5,7 +5,11 @@
 #include <QFileDialog>
 #include <QOpenGLWidget>
 #include <QTimer>
+#include <QThread>
+#include <QProcess>
 #include <iostream>
+#include <cmath>
+#include "analyzer_client.h"
 
 class VisualizerWidget : public QOpenGLWidget {
     Q_OBJECT
