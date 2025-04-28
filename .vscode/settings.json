@@ -1,0 +1,13 @@
+{
+  "cmake.sourceDirectory": "${workspaceFolder}",
+  "cmake.buildDirectory": "${workspaceFolder}/build",
+  "cmake.generator": "Visual Studio 17 2022",
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "python.defaultInterpreterPath": "${workspaceFolder}\\venv\\Scripts\\python.exe",
+  "python.formatting.provider": "black",
+  "editor.formatOnSave": true,
+  "files.associations": {
+      "*.h": "cpp",
+      "*.cpp": "cpp"
+  }
+}
