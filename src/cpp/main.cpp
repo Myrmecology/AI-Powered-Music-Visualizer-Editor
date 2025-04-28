@@ -250,17 +250,61 @@ private slots:
         
         if (!fileName.isEmpty()) {
             std::cout << "Loading audio file: " << fileName.toStdString() << std::endl;
-            // TODO: Implement audio loading
+            
+            // Analyze the file using Python server
+            AnalysisResult result = analyzerClient->analyzeFile(fileName.toStdString());
+            
+            if (result.success) {
+                visualizer->setAnalysisData(result);
+                std::cout << "Analysis complete. Tempo: " << result.tempo << " BPM" << std::endl;
+                std::cout << "Mood: " << result.predicted_mood << " (confidence: " 
+                          << result.mood_confidence << ")" << std::endl;
+            } else {
+                std::cerr << "Analysis failed: " << result.error_message << std::endl;
+            }
         }
     }
     
     void startMicCapture() {
         std::cout << "Starting microphone capture..." << std::endl;
-        // TODO: Implement mic capture
+        // TODO: Implement mic capture with RtAudio
+    }
+    
+    void stopCapture() {
+        std::cout << "Stopping capture..." << std::endl;
+        // TODO: Implement stop functionality
+    }
+    
+    void exportVideo() {
+        QString fileName = QFileDialog::getSaveFileName(this,
+            tr("Export Video"), "", tr("Video Files (*.mp4)"));
+        
+        if (!fileName.isEmpty()) {
+            std::cout << "Exporting video to: " << fileName.toStdString() << std::endl;
+            // TODO: Implement video export with FFmpeg
+        }
     }
 
 private:
     VisualizerWidget *visualizer;
+    AnalyzerClient *analyzerClient;
+    QProcess *pythonProcess;
+    
+    void startPythonServer() {
+        pythonProcess = new QProcess(this);
+        
+        // Start Python server in a separate process
+        QString pythonScript = "src/python/analysis_server.py";
+        pythonProcess->start("python", QStringList() << pythonScript);
+        
+        if (!pythonProcess->waitForStarted()) {
+            std::cerr << "Failed to start Python server" << std::endl;
+        } else {
+            std::cout << "Python analysis server started" << std::endl;
+            // Give the server a moment to initialize
+            QThread::msleep(1000);
+        }
+    }
 };
 
 int main(int argc, char *argv[]) {
