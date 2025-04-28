@@ -196,6 +196,12 @@ public:
     MainWindow(QWidget *parent = nullptr) : QMainWindow(parent) {
         setWindowTitle("AI Music Visualizer");
         
+        // Start Python server
+        startPythonServer();
+        
+        // Initialize analyzer client
+        analyzerClient = new AnalyzerClient();
+        
         // Create central widget and layout
         QWidget *centralWidget = new QWidget(this);
         QVBoxLayout *layout = new QVBoxLayout(centralWidget);
@@ -205,17 +211,36 @@ public:
         layout->addWidget(visualizer);
         
         // Create control buttons
+        QHBoxLayout *buttonLayout = new QHBoxLayout();
         QPushButton *loadButton = new QPushButton("Load Audio", this);
         QPushButton *micButton = new QPushButton("Start Mic", this);
+        QPushButton *stopButton = new QPushButton("Stop", this);
+        QPushButton *exportButton = new QPushButton("Export Video", this);
         
         connect(loadButton, &QPushButton::clicked, this, &MainWindow::loadAudioFile);
         connect(micButton, &QPushButton::clicked, this, &MainWindow::startMicCapture);
+        connect(stopButton, &QPushButton::clicked, this, &MainWindow::stopCapture);
+        connect(exportButton, &QPushButton::clicked, this, &MainWindow::exportVideo);
         
-        layout->addWidget(loadButton);
-        layout->addWidget(micButton);
+        buttonLayout->addWidget(loadButton);
+        buttonLayout->addWidget(micButton);
+        buttonLayout->addWidget(stopButton);
+        buttonLayout->addWidget(exportButton);
+        
+        layout->addLayout(buttonLayout);
         
         setCentralWidget(centralWidget);
         resize(800, 600);
+    }
+    
+    ~MainWindow() {
+        // Stop Python server
+        if (pythonProcess) {
+            pythonProcess->terminate();
+            pythonProcess->waitForFinished();
+            delete pythonProcess;
+        }
+        delete analyzerClient;
     }
 
 private slots:
