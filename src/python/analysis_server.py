@@ -2,8 +2,8 @@ import zmq
 import json
 import threading
 import numpy as np
-from audio_analyzer import AudioAnalyzer
-from mood_classifier import MoodClassifier
+from src.python.audio_analyzer import AudioAnalyzer
+from src.python.mood_classifier import MoodClassifier
 import time
 
 class AnalysisServer:
