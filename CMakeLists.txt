@@ -6,7 +6,7 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         CACHE STRING "Vcpkg toolchain file")
 endif()
 
-# Set Qt path
+# Set Qt path with the correct MinGW version
 set(CMAKE_PREFIX_PATH "C:/Qt/6.9.0/mingw_64/lib/cmake" CACHE PATH "Path to Qt installation")
 
 project(MusicVisualizer VERSION 1.0.0 LANGUAGES CXX)
