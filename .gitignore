@@ -18,6 +18,10 @@ build/
 *.so
 *.dll
 *.dylib
+/CMakeFiles/
+/CMakeCache.txt
+/cmake_install.cmake
+/install_manifest.txt
 
 # VS Code
 .vscode/*
@@ -31,7 +35,22 @@ build/
 moc_*.cpp
 qrc_*.cpp
 ui_*.h
+*.qm
+
+# vcpkg (important since it's a submodule)
+/vcpkg/*
+!/vcpkg/.gitignore
+!/vcpkg/README.md
+!/vcpkg/LICENSE.txt
 
 # Misc
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# IDE folders
+.idea/
+.vs/
+*.user
+*.suo
+*.sln.docstates

@@ -1,4 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
+
+# Add vcpkg toolchain file (add this before project declaration)
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" 
+        CACHE STRING "Vcpkg toolchain file")
+endif()
+
 project(MusicVisualizer VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -14,20 +21,16 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGL Quick)
 find_package(OpenGL REQUIRED)
 
 # Find ZeroMQ
-find_package(cppzmq REQUIRED)
+find_package(cppzmq CONFIG REQUIRED)
+
+# Find nlohmann_json
+find_package(nlohmann_json CONFIG REQUIRED)
 
 # Find RtAudio
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(RTAUDIO REQUIRED rtaudio)
+find_package(RtAudio CONFIG REQUIRED)
 
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/src/cpp)
-include_directories(${cppzmq_INCLUDE_DIR})
-include_directories(${ZeroMQ_INCLUDE_DIR})
-include_directories(${RTAUDIO_INCLUDE_DIRS})
-
-# Add nlohmann/json (assuming it's installed via package manager)
-include_directories(${CMAKE_SOURCE_DIR}/external/json/include)
 
 # Add source files
 set(SOURCES
@@ -40,6 +43,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME}
+    PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
@@ -47,7 +51,8 @@ target_link_libraries(${PROJECT_NAME}
     Qt6::Quick
     OpenGL::GL
     cppzmq
-    ${RTAUDIO_LIBRARIES}
+    nlohmann_json::nlohmann_json
+    RtAudio::rtaudio
 )
 
 # Copy Python scripts to build directory
