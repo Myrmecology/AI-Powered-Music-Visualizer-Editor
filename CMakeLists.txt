@@ -9,6 +9,10 @@ endif()
 # Set Qt path with the correct MinGW version
 set(CMAKE_PREFIX_PATH "C:/Qt/6.9.0/mingw_64/lib/cmake" CACHE PATH "Path to Qt installation")
 
+# Specify the exact compiler paths to use the correct MinGW version
+set(CMAKE_C_COMPILER "C:/Qt/Tools/mingw1310_64/bin/gcc.exe")
+set(CMAKE_CXX_COMPILER "C:/Qt/Tools/mingw1310_64/bin/g++.exe")
+
 project(MusicVisualizer VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
