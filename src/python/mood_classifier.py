@@ -30,6 +30,10 @@ class MoodClassifier:
         self.model = MoodClassifierNN()
         self.scaler = StandardScaler()
         
+        # Fit scaler with dummy data to avoid issues when predicting
+        dummy_features = np.random.randn(10, 19)  # 19 features expected
+        self.scaler.fit(dummy_features)
+        
         if model_path:
             self.load_model(model_path)
     
@@ -43,24 +47,41 @@ class MoodClassifier:
         features.extend(mfccs_mean)
         
         # Spectral features
-        spectral_centroid = np.mean(librosa.feature.spectral_centroid(y=audio_data, sr=sr))
-        spectral_bandwidth = np.mean(librosa.feature.spectral_bandwidth(y=audio_data, sr=sr))
-        spectral_rolloff = np.mean(librosa.feature.spectral_rolloff(y=audio_data, sr=sr))
-        features.extend([spectral_centroid, spectral_bandwidth, spectral_rolloff])
+        spectral_centroid = librosa.feature.spectral_centroid(y=audio_data, sr=sr)
+        spectral_bandwidth = librosa.feature.spectral_bandwidth(y=audio_data, sr=sr)
+        spectral_rolloff = librosa.feature.spectral_rolloff(y=audio_data, sr=sr)
+        
+        # Take mean to ensure we get a single value for each feature
+        features.append(np.mean(spectral_centroid))
+        features.append(np.mean(spectral_bandwidth))
+        features.append(np.mean(spectral_rolloff))
         
         # Tempo
         tempo, _ = librosa.beat.beat_track(y=audio_data, sr=sr)
         features.append(tempo)
         
         # Zero crossing rate
-        zcr = np.mean(librosa.feature.zero_crossing_rate(y=audio_data))
-        features.append(zcr)
+        zcr = librosa.feature.zero_crossing_rate(y=audio_data)
+        features.append(np.mean(zcr))
         
         # RMS energy
-        rms = np.mean(librosa.feature.rms(y=audio_data))
-        features.append(rms)
+        rms = librosa.feature.rms(y=audio_data)
+        features.append(np.mean(rms))
         
-        return np.array(features)
+        # Ensure we always return exactly the expected number of features
+        features_array = np.array(features)
+        
+        # If we have an unexpected number of features, pad or truncate
+        if len(features_array) != 19:
+            print(f"Warning: Expected 19 features, got {len(features_array)}")
+            if len(features_array) < 19:
+                # Pad with zeros
+                features_array = np.pad(features_array, (0, 19 - len(features_array)), 'constant')
+            else:
+                # Truncate
+                features_array = features_array[:19]
+        
+        return features_array
     
     def preprocess_features(self, features: np.ndarray) -> torch.Tensor:
         """Preprocess features for the neural network."""
