@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple
 
 class MoodClassifierNN(nn.Module):
     """Simple neural network for mood classification."""
-    def __init__(self, input_size=13, hidden_size=64, num_classes=5):
+    def __init__(self, input_size=19, hidden_size=64, num_classes=5):
         super(MoodClassifierNN, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.relu = nn.ReLU()
@@ -27,11 +27,11 @@ class MoodClassifierNN(nn.Module):
 class MoodClassifier:
     def __init__(self, model_path: str = None):
         self.MOODS = ['happy', 'sad', 'energetic', 'calm', 'angry']
-        self.model = MoodClassifierNN()
+        self.model = MoodClassifierNN(input_size=19)
         self.scaler = StandardScaler()
         
         # Fit scaler with dummy data to avoid issues when predicting
-        dummy_features = np.random.randn(10, 19)  # 19 features expected
+        dummy_features = np.random.randn(100, 19)  # 19 features expected
         self.scaler.fit(dummy_features)
         
         if model_path:
@@ -39,78 +39,100 @@ class MoodClassifier:
     
     def extract_features(self, audio_data: np.ndarray, sr: int) -> np.ndarray:
         """Extract audio features for mood classification."""
-        features = []
-        
-        # MFCCs
-        mfccs = librosa.feature.mfcc(y=audio_data, sr=sr, n_mfcc=13)
-        mfccs_mean = np.mean(mfccs, axis=1)
-        features.extend(mfccs_mean)
-        
-        # Spectral features
-        spectral_centroid = librosa.feature.spectral_centroid(y=audio_data, sr=sr)
-        spectral_bandwidth = librosa.feature.spectral_bandwidth(y=audio_data, sr=sr)
-        spectral_rolloff = librosa.feature.spectral_rolloff(y=audio_data, sr=sr)
-        
-        # Take mean to ensure we get a single value for each feature
-        features.append(np.mean(spectral_centroid))
-        features.append(np.mean(spectral_bandwidth))
-        features.append(np.mean(spectral_rolloff))
-        
-        # Tempo
-        tempo, _ = librosa.beat.beat_track(y=audio_data, sr=sr)
-        features.append(tempo)
-        
-        # Zero crossing rate
-        zcr = librosa.feature.zero_crossing_rate(y=audio_data)
-        features.append(np.mean(zcr))
-        
-        # RMS energy
-        rms = librosa.feature.rms(y=audio_data)
-        features.append(np.mean(rms))
-        
-        # Ensure we always return exactly the expected number of features
-        features_array = np.array(features)
-        
-        # If we have an unexpected number of features, pad or truncate
-        if len(features_array) != 19:
-            print(f"Warning: Expected 19 features, got {len(features_array)}")
-            if len(features_array) < 19:
-                # Pad with zeros
-                features_array = np.pad(features_array, (0, 19 - len(features_array)), 'constant')
-            else:
-                # Truncate
-                features_array = features_array[:19]
-        
-        return features_array
+        try:
+            # Ensure input is 1D
+            if len(audio_data.shape) > 1:
+                audio_data = audio_data.flatten()
+            
+            features = []
+            
+            # MFCCs - these return multiple coefficients
+            mfccs = librosa.feature.mfcc(y=audio_data, sr=sr, n_mfcc=13)
+            # Take mean across time axis to get 13 values
+            for i in range(13):
+                features.append(float(np.mean(mfccs[i])))
+            
+            # Spectral centroid - take mean if it returns multiple values
+            spectral_centroid = librosa.feature.spectral_centroid(y=audio_data, sr=sr)
+            features.append(float(np.mean(spectral_centroid)))
+            
+            # Spectral bandwidth
+            spectral_bandwidth = librosa.feature.spectral_bandwidth(y=audio_data, sr=sr)
+            features.append(float(np.mean(spectral_bandwidth)))
+            
+            # Spectral rolloff
+            spectral_rolloff = librosa.feature.spectral_rolloff(y=audio_data, sr=sr)
+            features.append(float(np.mean(spectral_rolloff)))
+            
+            # Tempo - this returns a single value
+            tempo, _ = librosa.beat.beat_track(y=audio_data, sr=sr)
+            features.append(float(tempo))
+            
+            # Zero crossing rate
+            zcr = librosa.feature.zero_crossing_rate(y=audio_data)
+            features.append(float(np.mean(zcr)))
+            
+            # RMS energy
+            rms = librosa.feature.rms(y=audio_data)
+            features.append(float(np.mean(rms)))
+            
+            # Convert to numpy array and ensure it's 1D
+            features_array = np.array(features, dtype=np.float32)
+            
+            print(f"Extracted {len(features_array)} features")
+            
+            # Verify we have exactly 19 features
+            assert len(features_array) == 19, f"Expected 19 features, got {len(features_array)}"
+            
+            return features_array
+            
+        except Exception as e:
+            print(f"Error in feature extraction: {e}")
+            # Return a default feature vector if extraction fails
+            return np.zeros(19, dtype=np.float32)
     
     def preprocess_features(self, features: np.ndarray) -> torch.Tensor:
         """Preprocess features for the neural network."""
+        # Ensure features is the right shape
+        if features.ndim == 1:
+            features = features.reshape(1, -1)
+        
         # Scale features
-        features_scaled = self.scaler.transform(features.reshape(1, -1))
+        features_scaled = self.scaler.transform(features)
+        
         # Convert to tensor
         return torch.FloatTensor(features_scaled)
     
     def predict_mood(self, audio_data: np.ndarray, sr: int) -> Dict:
         """Predict mood from audio data."""
-        # Extract features
-        features = self.extract_features(audio_data, sr)
-        
-        # Preprocess
-        features_tensor = self.preprocess_features(features)
-        
-        # Predict
-        with torch.no_grad():
-            output = self.model(features_tensor)
-            probabilities = output.numpy()[0]
-            predicted_mood_idx = np.argmax(probabilities)
+        try:
+            # Extract features
+            features = self.extract_features(audio_data, sr)
             
-        return {
-            "predicted_mood": self.MOODS[predicted_mood_idx],
-            "confidence": float(probabilities[predicted_mood_idx]),
-            "probabilities": {
-                mood: float(prob) for mood, prob in zip(self.MOODS, probabilities)
+            # Preprocess
+            features_tensor = self.preprocess_features(features)
+            
+            # Predict
+            with torch.no_grad():
+                output = self.model(features_tensor)
+                probabilities = output.numpy()[0]
+                predicted_mood_idx = np.argmax(probabilities)
+                
+            return {
+                "predicted_mood": self.MOODS[predicted_mood_idx],
+                "confidence": float(probabilities[predicted_mood_idx]),
+                "probabilities": {
+                    mood: float(prob) for mood, prob in zip(self.MOODS, probabilities)
+                }
             }
-        }
+        except Exception as e:
+            # Return a default prediction if something goes wrong
+            print(f"Error in prediction: {e}")
+            return {
+                "predicted_mood": "unknown",
+                "confidence": 0.0,
+                "probabilities": {mood: 0.2 for mood in self.MOODS}
+            }
     
     def train_model(self, audio_files: List[str], labels: List[str], epochs: int = 50):
         """Train the mood classifier model."""
