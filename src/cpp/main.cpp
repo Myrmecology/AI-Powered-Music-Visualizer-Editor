@@ -17,6 +17,9 @@
 #include <QTextStream>
 #include <QRegularExpression>
 #include <QDebug>
+#include <QMediaPlayer>
+#include <QAudioOutput>
+#include <QSlider>
 #include <iostream>
 #include <cmath>
 
@@ -210,6 +213,14 @@ public:
     void stopAnimation() {
         isPlaying = false;
     }
+    
+    void setPlaybackProgress(qint64 position, qint64 duration) {
+        // Sync visualization with actual audio playback position
+        if (duration > 0) {
+            float progress = (float)position / duration;
+            // You could use this to sync effects more precisely
+        }
+    }
 
 protected:
     void initializeGL() override {
@@ -365,6 +376,15 @@ public:
         setWindowTitle("AI Music Visualizer");
         setMinimumSize(800, 600);
         
+        // Initialize audio components
+        mediaPlayer = new QMediaPlayer(this);
+        audioOutput = new QAudioOutput(this);
+        mediaPlayer->setAudioOutput(audioOutput);
+        
+        // Connect media player signals
+        connect(mediaPlayer, &QMediaPlayer::positionChanged, this, &MainWindow::updatePosition);
+        connect(mediaPlayer, &QMediaPlayer::durationChanged, this, &MainWindow::updateDuration);
+        
         // Initialize analysis client
         analysisClient = new AnalysisClient(this);
         connect(analysisClient, &AnalysisClient::analysisCompleted,
@@ -409,6 +429,18 @@ public:
         buttonLayout->addWidget(stopButton);
         buttonLayout->addWidget(exportButton);
         
+        // Audio controls
+        QHBoxLayout *audioLayout = new QHBoxLayout();
+        QLabel *volumeLabel = new QLabel("Volume:", this);
+        volumeSlider = new QSlider(Qt::Horizontal, this);
+        volumeSlider->setRange(0, 100);
+        volumeSlider->setValue(70);
+        connect(volumeSlider, &QSlider::valueChanged, this, &MainWindow::setVolume);
+        
+        audioLayout->addWidget(volumeLabel);
+        audioLayout->addWidget(volumeSlider);
+        
+        controlLayout->addLayout(audioLayout);
         controlLayout->addLayout(buttonLayout);
         
         // Mood color controls
@@ -451,6 +483,10 @@ private slots:
             statusLabel->setText(QString("Loaded: %1").arg(QFileInfo(fileName).baseName()));
             currentFile = fileName;
             analyzeButton->setEnabled(true);
+            
+            // Load audio file into media player
+            mediaPlayer->setSource(QUrl::fromLocalFile(fileName));
+            
             std::cout << "Loading audio file: " << fileName.toStdString() << std::endl;
         }
     }
@@ -478,15 +514,21 @@ private slots:
     }
     
     void playAudio() {
-        statusLabel->setText("Playing visualization...");
-        visualizer->startAnimation();
-        std::cout << "Starting visualization..." << std::endl;
+        if (!currentFile.isEmpty()) {
+            statusLabel->setText("Playing audio and visualization...");
+            visualizer->startAnimation();
+            mediaPlayer->play();
+            std::cout << "Starting audio playback and visualization..." << std::endl;
+        } else {
+            statusLabel->setText("Please load an audio file first");
+        }
     }
     
     void stopAudio() {
         statusLabel->setText("Stopped");
         visualizer->stopAnimation();
-        std::cout << "Stopping visualization..." << std::endl;
+        mediaPlayer->stop();
+        std::cout << "Stopping audio and visualization..." << std::endl;
     }
     
     void exportVideo() {
@@ -511,6 +553,20 @@ private slots:
         visualizer->setMoodColor(color);
         statusLabel->setText(QString("Manual mood override: %1").arg(mood));
     }
+    
+    void setVolume(int value) {
+        audioOutput->setVolume(value / 100.0f);
+    }
+    
+    void updatePosition(qint64 position) {
+        // Update visualizer with playback progress
+        visualizer->setPlaybackProgress(position, mediaPlayer->duration());
+    }
+    
+    void updateDuration(qint64 duration) {
+        Q_UNUSED(duration)
+        // Could add a progress bar here if desired
+    }
 
 private:
     VisualizerWidget *visualizer;
@@ -518,6 +574,9 @@ private:
     QString currentFile;
     AnalysisClient *analysisClient;
     QPushButton *analyzeButton;
+    QMediaPlayer *mediaPlayer;
+    QAudioOutput *audioOutput;
+    QSlider *volumeSlider;
 };
 
 int main(int argc, char *argv[]) {

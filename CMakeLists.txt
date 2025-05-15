@@ -15,7 +15,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-# Find Qt6
+# Find Qt6 - Added Multimedia for audio playback
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets Multimedia)
 
 # Find OpenGL
@@ -32,7 +32,7 @@ set(SOURCES
 # Add executable
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-# Link libraries
+# Link libraries - Added Qt6::Multimedia
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
     Qt6::Core
