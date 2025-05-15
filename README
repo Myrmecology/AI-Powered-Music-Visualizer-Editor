@@ -81,7 +81,7 @@ Download from git-scm.com
 
 Installation Steps
 1. Clone the Repository
-bashgit clone https://github.com/your-username/AI-Powered-Music-Visualizer-Editor.git
+bashgit clone https://github.com/Myrmecology/AI-Powered-Music-Visualizer-Editor.git
 cd AI-Powered-Music-Visualizer-Editor
 2. Set Up Python Environment
 bash# Create virtual environment
