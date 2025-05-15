@@ -25,7 +25,7 @@
 #include <iostream>
 #include <cmath>
 
-// AnalysisClient class with better Python path handling
+// AnalysisClient class with improved resource management
 class AnalysisClient : public QObject {
     Q_OBJECT
     
@@ -59,7 +59,15 @@ public:
         }
     }
     
+    // Added destructor for proper cleanup
+    ~AnalysisClient() {
+        cleanupProcesses();
+    }
+    
     void analyzeFile(const QString& filePath) {
+        // Clean up any existing processes first
+        cleanupProcesses();
+        
         emit analysisStarted();
         
         // Set working directory to project root
@@ -97,6 +105,22 @@ public:
         qDebug() << "Working directory:" << process->workingDirectory();
         
         process->start(pythonExecutable, arguments);
+    }
+    
+    // Added cleanup function
+    void cleanupProcesses() {
+        if (process && process->state() != QProcess::NotRunning) {
+            process->kill();
+            process->waitForFinished(1000);
+        }
+        
+        // Clean up any lingering mood classification processes
+        for (auto* proc : findChildren<QProcess*>()) {
+            if (proc != process && proc->state() != QProcess::NotRunning) {
+                proc->kill();
+                proc->waitForFinished(500);
+            }
+        }
     }
     
 signals:
@@ -152,6 +176,8 @@ private:
                     }
                     
                     emit analysisCompleted(tempResult);
+                    
+                    // Ensure cleanup after completion
                     moodProcess->deleteLater();
                 });
         
@@ -194,6 +220,7 @@ public:
         isPlaying = false;
         isAnalyzed = false;
         currentTempo = 120.0f;
+        frameCount = 0; // Added for performance monitoring
     }
     
     void setMoodColor(const QVector3D& color) {
@@ -225,10 +252,17 @@ public:
         isPlaying = true;
         beatIntensity = 1.0f;
         animationTime.restart();
+        frameCount = 0; // Reset frame counter
+        
+        // Reset animation timer to prevent accumulation of timing errors
+        animationTimer->stop();
+        animationTimer->start(16);
     }
     
     void stopAnimation() {
         isPlaying = false;
+        // Optional: force a final update to clear any remaining artifacts
+        update();
     }
     
     void setPlaybackProgress(qint64 position, qint64 duration) {
@@ -236,6 +270,17 @@ public:
             float progress = (float)position / duration;
             // Could be used for more precise sync
         }
+    }
+    
+    // Added function to reset visualization state
+    void resetVisualization() {
+        isPlaying = false;
+        isAnalyzed = false;
+        beatIntensity = 0.0f;
+        currentTempo = 120.0f;
+        frameCount = 0;
+        animationTime.restart();
+        update();
     }
 
 protected:
@@ -259,6 +304,9 @@ protected:
             drawFrequencyBars();
             drawMoodParticles();
         }
+        
+        // Increment frame counter for performance monitoring
+        frameCount++;
     }
 
     void resizeGL(int w, int h) override {
@@ -284,6 +332,12 @@ private slots:
             if (fmod(time, beatInterval) < 0.1f && beatIntensity < 0.5f) {
                 beatIntensity = 1.0f;
             }
+            
+            // Periodically reset timer to prevent drift (every 30 seconds)
+            if (frameCount % (30 * 60) == 0) {
+                animationTime.restart();
+                frameCount = 0;
+            }
         }
         
         update(); // Triggers paintGL
@@ -298,6 +352,7 @@ private:
     bool isAnalyzed;
     float currentTempo;
     float currentDuration;
+    qint64 frameCount; // Added for performance monitoring
     
     void drawWaveform() {
         // Enhanced waveform based on analysis
@@ -429,6 +484,7 @@ public:
         QPushButton *analyzeButton = new QPushButton("Analyze", this);
         QPushButton *playButton = new QPushButton("Play", this);
         QPushButton *stopButton = new QPushButton("Stop", this);
+        QPushButton *refreshButton = new QPushButton("Refresh", this); // Added refresh button
         QPushButton *exportButton = new QPushButton("Export Video", this);
         
         analyzeButton->setEnabled(false);
@@ -437,12 +493,14 @@ public:
         connect(analyzeButton, &QPushButton::clicked, this, &MainWindow::analyzeAudio);
         connect(playButton, &QPushButton::clicked, this, &MainWindow::playAudio);
         connect(stopButton, &QPushButton::clicked, this, &MainWindow::stopAudio);
+        connect(refreshButton, &QPushButton::clicked, this, &MainWindow::refreshApplication);
         connect(exportButton, &QPushButton::clicked, this, &MainWindow::exportVideo);
         
         buttonLayout->addWidget(loadButton);
         buttonLayout->addWidget(analyzeButton);
         buttonLayout->addWidget(playButton);
         buttonLayout->addWidget(stopButton);
+        buttonLayout->addWidget(refreshButton);
         buttonLayout->addWidget(exportButton);
         
         // Audio controls
@@ -488,6 +546,15 @@ public:
         setCentralWidget(centralWidget);
         
         this->analyzeButton = analyzeButton;
+        this->refreshButton = refreshButton;
+    }
+    
+    // Added destructor for cleanup
+    ~MainWindow() {
+        stopAudio();
+        if (analysisClient) {
+            analysisClient->cleanupProcesses();
+        }
     }
 
 private slots:
@@ -547,6 +614,29 @@ private slots:
         std::cout << "Stopping audio and visualization..." << std::endl;
     }
     
+    // Added refresh function to reset everything
+    void refreshApplication() {
+        // Stop everything
+        stopAudio();
+        
+        // Clean up processes
+        analysisClient->cleanupProcesses();
+        
+        // Reset visualizer
+        visualizer->resetVisualization();
+        
+        // Reset media player
+        mediaPlayer->stop();
+        mediaPlayer->setSource(QUrl());
+        
+        // Reset UI state
+        analyzeButton->setEnabled(false);
+        currentFile.clear();
+        statusLabel->setText("Ready to visualize music - Application refreshed");
+        
+        qDebug() << "Application refreshed - all resources cleaned up";
+    }
+    
     void exportVideo() {
         QString fileName = QFileDialog::getSaveFileName(this,
             tr("Export Video"), "", tr("Video Files (*.mp4)"));
@@ -589,6 +679,7 @@ private:
     QString currentFile;
     AnalysisClient *analysisClient;
     QPushButton *analyzeButton;
+    QPushButton *refreshButton; // Added refresh button reference
     QMediaPlayer *mediaPlayer;
     QAudioOutput *audioOutput;
     QSlider *volumeSlider;
