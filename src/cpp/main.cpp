@@ -20,10 +20,12 @@
 #include <QMediaPlayer>
 #include <QAudioOutput>
 #include <QSlider>
+#include <QFile>
+#include <QElapsedTimer>
 #include <iostream>
 #include <cmath>
 
-// Improved AnalysisClient class that parses Python output
+// AnalysisClient class with better Python path handling
 class AnalysisClient : public QObject {
     Q_OBJECT
     
@@ -42,6 +44,19 @@ public:
     
     AnalysisClient(QObject* parent = nullptr) : QObject(parent) {
         process = new QProcess(this);
+        
+        // Set up the Python path - try to find the venv Python
+        QString projectDir = QApplication::applicationDirPath() + "/..";
+        QString venvPython = projectDir + "/venv/Scripts/python.exe";
+        
+        // Check if venv Python exists, otherwise use system Python
+        if (QFile::exists(venvPython)) {
+            pythonExecutable = venvPython;
+            qDebug() << "Using venv Python:" << pythonExecutable;
+        } else {
+            pythonExecutable = "python";
+            qDebug() << "Using system Python:" << pythonExecutable;
+        }
     }
     
     void analyzeFile(const QString& filePath) {
@@ -51,14 +66,14 @@ public:
         QString projectDir = QApplication::applicationDirPath() + "/..";
         process->setWorkingDirectory(projectDir);
         
-        // Prepare Python command - we'll call the Python script directly
-        QString program = "python";
+        // Prepare Python command
         QStringList arguments;
         arguments << "main.py" << "analyze" << filePath;
         
         connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
                 this, [this, filePath](int exitCode, QProcess::ExitStatus exitStatus) {
                     Q_UNUSED(exitStatus)
+                    qDebug() << "Analysis process finished with exit code:" << exitCode;
                     
                     AnalysisResult result;
                     if (exitCode == 0) {
@@ -70,18 +85,29 @@ public:
                         runMoodClassification(filePath);
                     } else {
                         result.success = false;
-                        result.error_message = "Analysis failed: " + process->readAllStandardError();
+                        QString stderrOutput = process->readAllStandardError();
+                        result.error_message = QString("Analysis failed (exit code %1): %2")
+                                               .arg(exitCode).arg(stderrOutput);
+                        qDebug() << "Analysis error:" << result.error_message;
                         emit analysisCompleted(result);
                     }
                 });
         
-        qDebug() << "Running command:" << program << arguments.join(" ");
+        qDebug() << "Running command:" << pythonExecutable << arguments.join(" ");
         qDebug() << "Working directory:" << process->workingDirectory();
         
-        process->start(program, arguments);
+        process->start(pythonExecutable, arguments);
     }
     
+signals:
+    void analysisStarted();
+    void analysisCompleted(const AnalysisResult& result);
+    
 private:
+    QString pythonExecutable;
+    QProcess* process;
+    AnalysisResult tempResult;
+    
     void parseAnalysisOutput(const QString& output, AnalysisResult& result) {
         result.success = true;
         
@@ -109,7 +135,6 @@ private:
         QString projectDir = QApplication::applicationDirPath() + "/..";
         moodProcess->setWorkingDirectory(projectDir);
         
-        QString program = "python";
         QStringList arguments;
         arguments << "main.py" << "classify" << filePath;
         
@@ -130,7 +155,7 @@ private:
                     moodProcess->deleteLater();
                 });
         
-        moodProcess->start(program, arguments);
+        moodProcess->start(pythonExecutable, arguments);
     }
     
     void parseMoodOutput(const QString& output, AnalysisResult& result) {
@@ -148,14 +173,6 @@ private:
             result.mood_confidence = match.captured(1).toFloat();
         }
     }
-    
-signals:
-    void analysisStarted();
-    void analysisCompleted(const AnalysisResult& result);
-    
-private:
-    QProcess* process;
-    AnalysisResult tempResult;
 };
 
 class VisualizerWidget : public QOpenGLWidget {
@@ -215,10 +232,9 @@ public:
     }
     
     void setPlaybackProgress(qint64 position, qint64 duration) {
-        // Sync visualization with actual audio playback position
         if (duration > 0) {
             float progress = (float)position / duration;
-            // You could use this to sync effects more precisely
+            // Could be used for more precise sync
         }
     }
 
@@ -376,7 +392,7 @@ public:
         setWindowTitle("AI Music Visualizer");
         setMinimumSize(800, 600);
         
-        // Initialize audio components
+        // Initialize audio components - keeping the original working implementation
         mediaPlayer = new QMediaPlayer(this);
         audioOutput = new QAudioOutput(this);
         mediaPlayer->setAudioOutput(audioOutput);
@@ -559,7 +575,6 @@ private slots:
     }
     
     void updatePosition(qint64 position) {
-        // Update visualizer with playback progress
         visualizer->setPlaybackProgress(position, mediaPlayer->duration());
     }
     
