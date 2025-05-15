@@ -16,7 +16,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # Find Qt6
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets Multimedia)
 
 # Find OpenGL
 find_package(OpenGL REQUIRED)
@@ -40,6 +40,7 @@ target_link_libraries(${PROJECT_NAME}
     Qt6::Widgets
     Qt6::OpenGL
     Qt6::OpenGLWidgets
+    Qt6::Multimedia
     OpenGL::GL
 )
 
